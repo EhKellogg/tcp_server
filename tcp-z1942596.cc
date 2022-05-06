@@ -6,18 +6,29 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <cstring>
+#include <string>
+#include <vector>
+
+void chomp(char *s)
+{
+	for (char *p = s + strlen(s)-1; *p == '\r' || *p == '\n'; p--)
+		*p = '\0';
+}
 
 int main(int argc, char *argv[])
 {
-	if(argc < 2)
-		std::cout << "not enogh arguments" << std::endl;
-	char buffer[257];
+	if(argc != 3)
+	{
+		std::cout << "not enough arguments" << std::endl;
+		exit(EXIT_FAILURE);
+	}
+	char buffer[256];
 	int sock, newSock;
 	socklen_t serverlen, clientlen;
 	ssize_t received;
 	struct sockaddr_in echoserver;
 	struct sockaddr_in echoclient;
-
+	std::string temp;
 	if((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
 	{
 		perror("Failed to create socket");
@@ -42,8 +53,8 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 	
-	
 	clientlen = sizeof(echoclient);
+	std::vector<std::string> files;
 	while((newSock = accept(sock, (struct sockaddr *) &echoclient, &clientlen)) != -1)
 	{
 		if(fork())
@@ -52,28 +63,59 @@ int main(int argc, char *argv[])
 		}
 		else
 		{
-			//close(0);
-			//dup(newSock);
-			//close(1);
-			//dup(newSock);	
-		
 			std::cerr << "Client connected: " << inet_ntoa(echoclient.sin_addr) << "\n";
 			if((received = read(newSock, buffer, 256)) == -1)
 			{
 				perror("read failed");
 				exit(2);
 			}
-			if((write(newSock, buffer, received)) != received)
+
+			DIR *dirp;
+				struct dirent *dirEntry;
+				
+				dirp = opendir(argv[2]);
+				if(dirp == 0)
+				{
+					perror(argv[2]);
+					exit(EXIT_FAILURE);
+				}
+			while((dirEntry = readdir(dirp)) != NULL)
+				{
+					if(dirEntry->d_name[0] != '.')
+					{
+						files.push_back(dirEntry->d_name);
+					}	
+				}
+			std::string get = "GET /";
+			chomp(buffer);
+			int compare = strcmp(get.c_str(), buffer);
+			if(compare == 0)
 			{
-				perror("write mismatch");
-				exit(3);
+			
+				
+				for(auto x : files)
+				{
+					write(newSock, x.c_str(), x.length());
+					write(newSock, " ", 1);	
+				}
+				write(newSock, "\n", 1);
 			}
+			for(int i = 0; i < files.size(); ++i)
+			{	
+				if(strncmp(files[i].c_str(), buffer, 0) == 0)
+				{
+					write(newSock, files[i].c_str(), files[i].length());
+				}
+			}
+			std::cout << files[0] << std::endl;
+			write(newSock, "\n", 1);
+		
+			closedir(dirp);
 			close(newSock);
 			exit(0);
 		}
 		
 	}
 	
-
 	return 0;
 }
