@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+//removes trailing characters from a char array
 void chomp(char *s)
 {
 	for (char *p = s + strlen(s)-1; *p == '\r' || *p == '\n'; p--)
@@ -54,7 +55,14 @@ int main(int argc, char *argv[])
 	}
 	
 	clientlen = sizeof(echoclient);
-	std::vector<std::string> files;
+	std::vector<std::string> files; //vector to hold the names of files in the folder
+
+	//loop that runs the server and waits for a client to connect 
+	// when connected it accepts the commands from the client
+	// creates a fork and closes the socket to continue waiting for more clients
+	// the child process looks for an argument and opens the directory given by the server
+	// checks to see if the file specified by client exists and if it does it should send the file (wasn't able to get that figured out)
+	// if only GET / is sent then just prints out the names of the files
 	while((newSock = accept(sock, (struct sockaddr *) &echoclient, &clientlen)) != -1)
 	{
 		if(fork())
